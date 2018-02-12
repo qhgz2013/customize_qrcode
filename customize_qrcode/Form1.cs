@@ -102,7 +102,7 @@ namespace customize_qrcode
                 img = ImageProcess.ReverseGray(img);
             }
             if (checkBox1.Checked)
-                img = ImageProcess.ToBinary(img, 230);
+                img = ImageProcess.ToBinary(img, (byte)((comboBox1.SelectedIndex > 0) ? 230 : 127));
 
 
             pictureBox1.Image = img;
