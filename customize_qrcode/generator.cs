@@ -86,7 +86,7 @@ namespace customize_qrcode
         private readonly static int[][] CAPACITY_TABLE = new int[][]
         {
             new int[] {}, //version 0, not identified
-            new int[] {19,16,13,9}, //version 1, L M H Q ordered
+            new int[] {19,16,13,9}, //version 1, L M Q H ordered
             new int[] {34,28,22,16}, //version 2
             new int[] {55,44,34,26}, //version 3
             new int[] {80,64,48,36}, //version 4

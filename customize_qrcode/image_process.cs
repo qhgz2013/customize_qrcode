@@ -104,10 +104,13 @@ namespace customize_qrcode
             return ret;
         }
 
-        public static Image CropFromLeftTop(Image origin, int width, int height)
+        public static Image CropImage(Image origin, int x, int y, int width, int height, Color? background = null)
         {
             var bmp = new Bitmap(origin);
             var ret = new Bitmap(width, height);
+
+            if (background == null)
+                background = Color.White;
 
             var lck = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
             var buf = new byte[lck.Stride * bmp.Height];
@@ -115,12 +118,19 @@ namespace customize_qrcode
             var lck2 = ret.LockBits(new Rectangle(0, 0, ret.Width, ret.Height), System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
             var buf2 = new byte[lck2.Stride * ret.Height];
 
-            for (int y = 0; y < height; y++)
+            for (int ty = 0; ty < height; ty++)
             {
-                for (int x = 0; x < width; x++)
+                for (int tx = 0; tx < width; tx++)
                 {
-                    int src_offset = y * lck.Stride + x * 3;
-                    int dst_offset = y * lck2.Stride + x * 3;
+                    int dst_offset = ty * lck2.Stride + tx * 3;
+                    if (y + ty < 0 || x + tx < 0)
+                    {
+                        buf2[dst_offset] = background.Value.R;
+                        buf2[dst_offset + 1] = background.Value.G;
+                        buf2[dst_offset + 2] = background.Value.B;
+                        continue;
+                    }
+                    int src_offset = (y + ty) * lck.Stride + (x + tx) * 3;
 
                     for (int i = 0; i < 3; i++)
                         buf2[dst_offset + i] = buf[src_offset + i];
@@ -204,26 +214,6 @@ namespace customize_qrcode
             var buf = new byte[lck.Stride * bmp.Height];
             Marshal.Copy(lck.Scan0, buf, 0, buf.Length);
 
-            //ulong sum = 0, avail_dot = 0;
-            //if (uses_average)
-            //{
-            //    for (int y = 0; y < bmp.Height; y++)
-            //    {
-            //        for (int x = 0; x < bmp.Width; x++)
-            //        {
-            //            int offset = y * lck.Stride + 3 * x;
-            //            byte val = buf[offset];
-            //            if (val < white_threshold)
-            //            {
-            //                sum += val;
-            //                avail_dot++;
-            //            }
-            //        }
-            //    }
-            //    if (avail_dot > 0)
-            //        sum /= avail_dot;
-            //}
-
             for (int y = 0; y < bmp.Height; y++)
             {
                 for (int x = 0; x < bmp.Width; x++)
@@ -235,6 +225,44 @@ namespace customize_qrcode
                 }
             }
 
+            bmp.UnlockBits(lck);
+            lck = ret.LockBits(new Rectangle(0, 0, ret.Width, ret.Height), System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            Marshal.Copy(buf, 0, lck.Scan0, buf.Length);
+            ret.UnlockBits(lck);
+            return ret;
+        }
+
+        //对每个(window_size x window_size)进行灰度平均
+        public static Image AverageGray(Image origin, int window_size, int stride = 1)
+        {
+            var bmp = new Bitmap(origin);
+            var ret = new Bitmap(bmp.Width, bmp.Height);
+            var lck = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            var buf = new byte[lck.Stride * bmp.Height];
+            Marshal.Copy(lck.Scan0, buf, 0, buf.Length);
+
+            for (int y = 0; y < bmp.Height; y += stride)
+            {
+                for (int x = 0; x < bmp.Width; x += stride)
+                {
+                    ulong sum = 0;
+                    for (int i = 0; i < window_size && y + i < bmp.Height; i++)
+                        for (int j = 0; j < window_size && x + j < bmp.Width; j++)
+                        {
+                            int offset = (y + i) * lck.Stride + 3 * (x + j);
+                            sum += buf[offset];
+                        }
+                    sum /= (ulong)(window_size * window_size);
+                    for (int i = 0; i < window_size && y + i < bmp.Height; i++)
+                        for (int j = 0; j < window_size && x + j < bmp.Width; j++)
+                        {
+                            int offset = (y + i) * lck.Stride + 3 * (x + j);
+                            buf[offset] = (byte)sum;
+                            buf[offset + 1] = (byte)sum;
+                            buf[offset + 2] = (byte)sum;
+                        }
+                }
+            }
             bmp.UnlockBits(lck);
             lck = ret.LockBits(new Rectangle(0, 0, ret.Width, ret.Height), System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
             Marshal.Copy(buf, 0, lck.Scan0, buf.Length);
