@@ -123,7 +123,7 @@ namespace customize_qrcode
                 for (int tx = 0; tx < width; tx++)
                 {
                     int dst_offset = ty * lck2.Stride + tx * 3;
-                    if (y + ty < 0 || x + tx < 0)
+                    if (y + ty < 0 || x + tx < 0 || y + ty >= bmp.Height || x + tx >= bmp.Width)
                     {
                         buf2[dst_offset] = background.Value.R;
                         buf2[dst_offset + 1] = background.Value.G;
